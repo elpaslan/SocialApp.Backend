@@ -31,7 +31,10 @@ namespace SocialApp.Backend.Webapi.Helpers
 
             CreateMap<Image, ImagesForDetails>();
 
-            CreateMap<UserForUpdateDto, User>();
+            CreateMap<User, UserForUpdateDto>().ReverseMap();
+
+            CreateMap<MessageForCreateDto, Message>().ReverseMap();
+
         }
     }
 }

@@ -23,5 +23,8 @@ namespace SocialApp.Backend.Webapi.Models
         public ICollection<UserToUser> Followings { get; set; }
         public ICollection<UserToUser> Followers { get; set; }
 
+        public ICollection<Message> MessagesSent { get; set; }
+        public ICollection<Message> MessagesReceived { get; set; }
+
     }
 }

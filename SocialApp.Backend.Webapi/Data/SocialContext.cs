@@ -17,6 +17,8 @@ namespace SocialApp.Backend.Webapi.Data
 
         public DbSet<Image> Images { get; set; }
         public DbSet<UserToUser> UserToUser { get; set; }
+        public DbSet<Message> Messages { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -34,6 +36,16 @@ namespace SocialApp.Backend.Webapi.Data
                 .HasOne(l => l.Follower)
                 .WithMany(a => a.Followings)
                 .HasForeignKey(l => l.UserId);
+
+            builder.Entity<Message>()
+                .HasOne(i => i.Sender)
+                .WithMany(i => i.MessagesSent)
+                .HasForeignKey(i => i.SenderId);
+
+            builder.Entity<Message>()
+                .HasOne(i => i.Recipient)
+                .WithMany(i => i.MessagesReceived)
+                .HasForeignKey(i => i.RecipientId);
 
         }
     }

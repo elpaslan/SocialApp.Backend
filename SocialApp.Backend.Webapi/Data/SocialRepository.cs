@@ -36,6 +36,7 @@ namespace SocialApp.Backend.Webapi.Data
             var users = _context.Users
                         .Where(i => i.Id != userParams.UserId)
                         .Include(i => i.Images)
+                        .OrderByDescending(i=>i.LastActive)
                         .AsQueryable();
 
             if (userParams.Followers)
@@ -50,6 +51,47 @@ namespace SocialApp.Backend.Webapi.Data
                 // takip edilenler
                 var result = await GetFollows(userParams.UserId, true);
                 users = users.Where(u => result.Contains(u.Id));
+            }
+
+            if (!string.IsNullOrEmpty(userParams.Gender))
+            {
+                users = users.Where(i => i.Gender == userParams.Gender);
+            }
+
+            if (!string.IsNullOrEmpty(userParams.Name))
+            {
+                users = users.Where(i => i.Name.ToLower() == userParams.Name.ToLower());
+            }
+
+            if (userParams.minAge!=18 || userParams.maxAge != 100)
+            {
+                var today = DateTime.Now;
+                var min = today.AddYears(-(userParams.maxAge+1));
+                var max = today.AddYears(-userParams.minAge);
+
+                users = users.Where(i => i.DateOfBirth >= min && i.DateOfBirth <= max);
+                 
+            }
+
+            if (!string.IsNullOrEmpty(userParams.City))
+            {
+                users = users.Where(i => i.City.ToLower() == userParams.City.ToLower());
+            }
+
+            if (!string.IsNullOrEmpty(userParams.Country))
+            {
+                users = users.Where(i => i.Country.ToLower() == userParams.Country.ToLower());
+            }
+
+            if (!string.IsNullOrEmpty(userParams.OrderBy))
+            {
+                if (userParams.OrderBy == "age")
+                {
+                    users = users.OrderBy(i => i.DateOfBirth);
+                } else if (userParams.OrderBy == "created")
+                {
+                    users = users.OrderByDescending(i => i.Created);
+                }
             }
 
             return await users.ToListAsync();
