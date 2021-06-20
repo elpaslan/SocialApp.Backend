@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using SocialApp.Backend.Webapi.Data;
+using SocialApp.Backend.Webapi.Helpers;
 using SocialApp.Backend.Webapi.Models;
 using System;
 using System.Collections.Generic;
@@ -38,6 +39,7 @@ namespace SocialApp.Backend.Webapi
         {
             services.AddDbContext<SocialContext>(x => x.UseSqlite("Data Source=social.Db"));
             services.AddIdentity<User, Role>().AddEntityFrameworkStores<SocialContext>();
+            services.AddScoped<ISocialRepository, SocialRepository>();
             services.Configure<IdentityOptions>(options =>
             {
 
@@ -54,7 +56,10 @@ namespace SocialApp.Backend.Webapi
                 options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
                 options.User.RequireUniqueEmail = true;
             });
-            services.AddControllers();
+            services.AddAutoMapper(typeof(Startup));
+            services.AddControllers().AddNewtonsoftJson(options => {
+                options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+            });
             services.AddCors(options =>
             {
                 options.AddPolicy(
@@ -84,14 +89,17 @@ namespace SocialApp.Backend.Webapi
                     ValidateAudience = false
                 };
             });
+
+            services.AddScoped<LastActiveActionFilter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, UserManager<User> userManager)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                SeedDatabase.Seed(userManager).Wait();
             }
             else
             {

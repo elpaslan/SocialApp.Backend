@@ -1,117 +1,108 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
+using SocialApp.Backend.Webapi.Data;
 using SocialApp.Backend.Webapi.Dtos;
+using SocialApp.Backend.Webapi.Helpers;
 using SocialApp.Backend.Webapi.Models;
 using System;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SocialApp.Backend.Webapi.Controllers
 {
+    [ServiceFilter(typeof(LastActiveActionFilter))]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private UserManager<User> _userManager;
-        private SignInManager<User> _signInManager;
-        public IConfiguration _configuration;
-
-        public UsersController(UserManager<User> userManager, SignInManager<User> signInManager, IConfiguration configuration)
+        private readonly ISocialRepository _repository;
+        private readonly IMapper _mapper;
+        public UsersController(ISocialRepository repository,IMapper mapper)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _configuration = configuration;
+            _repository = repository;
+            _mapper = mapper;
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(UserForRegisterDto model)
+        // api/users
+
+        public async Task<IActionResult> GetUsers([FromQuery] UserQueryParams userParams)
         {
+            userParams.UserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            
+            var users = await _repository.GetUsers(userParams);
+
+            var result = _mapper.Map<IEnumerable<UserForListDto>>(users);
+            
+
+            return Ok(result);
+        }
+
+
+        // api/users/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUser(int id)
+        {
+            var user = await _repository.GetUser(id);
+
+            var result = _mapper.Map<UserForDetailsDto>(user);
+
+            return Ok(result);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateUser(int id, UserForUpdateDto model)
+        {
+            if (id != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
+                return BadRequest("not valid request");
+
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            var user = new User
-            {
-                UserName = model.UserName,
-                Email = model.Email,
-                Name = model.Name,
-                Gender = model.Gender,
-                Created = DateTime.Now,
-                LastActive = DateTime.Now
-            };
+            var user = await _repository.GetUser(id);
+            _mapper.Map(model, user);
 
-            var result = await _userManager.CreateAsync(user, model.Password);
+            if (await _repository.SaveChanges())
+                return Ok();
 
-            if (result.Succeeded) { return StatusCode(201); }
-
-            return BadRequest(result.Errors);
-
+            throw new System.Exception("Güncelleme sırasında bir hata oluştu");
 
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(UserForLoginDto model)
+        [HttpPost("{followerUserId}/follow/{userId}")]
+        public async Task<IActionResult> FollowUser(int followerUserId, int userId)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (followerUserId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value))
+                return Unauthorized();
 
-            var user = await _userManager.FindByNameAsync(model.UserName);
+            if (followerUserId == userId)
+                return BadRequest("Kendini nbiye takip ediyorsun?");
 
-            if (user == null)
+            var IsAlreadyFollowed = await _repository
+                .IsAlreadyFollowed(followerUserId, userId);
+
+            if (IsAlreadyFollowed)
+                return BadRequest("Zaten kullanıcıyı takip ediyorsunuz");
+
+            if (await _repository.GetUser(userId) == null)
+                return NotFound();
+
+            var follow = new UserToUser()
             {
-                return BadRequest(new
-                {
-                    message = "username is incorrect"
-                }
-                );
+                UserId = userId,
+                FollowerId = followerUserId
             };
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
+            _repository.Add<UserToUser>(follow);
 
-            if (result.Succeeded)
-            {
-                //login
-                return Ok(new
-                {
-                    token = GenerateJwtToken(user)
-                });
-            }
+            if (await _repository.SaveChanges())
+                return Ok();
 
-            return Unauthorized();
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes( _configuration.GetSection("AppSettings:Secret").Value);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString
-                    ()),
-                    new Claim(ClaimTypes.Name, user.UserName),
-
-                }), 
-                
-                Expires = DateTime.UtcNow.AddDays(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
-
-
+            return BadRequest("Hata Oluştu");
         }
     }
 }

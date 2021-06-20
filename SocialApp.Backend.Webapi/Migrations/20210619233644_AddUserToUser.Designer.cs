@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SocialApp.Backend.Webapi.Data;
 
 namespace SocialApp.Backend.Webapi.Migrations
 {
     [DbContext(typeof(SocialContext))]
-    partial class SocialContextModelSnapshot : ModelSnapshot
+    [Migration("20210619233644_AddUserToUser")]
+    partial class AddUserToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -341,14 +343,14 @@ namespace SocialApp.Backend.Webapi.Migrations
 
             modelBuilder.Entity("SocialApp.Backend.Webapi.Models.UserToUser", b =>
                 {
-                    b.HasOne("SocialApp.Backend.Webapi.Models.User", "User")
-                        .WithMany("Followers")
+                    b.HasOne("SocialApp.Backend.Webapi.Models.User", "Follower")
+                        .WithMany("Followings")
                         .HasForeignKey("FollowerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SocialApp.Backend.Webapi.Models.User", "Follower")
-                        .WithMany("Followings")
+                    b.HasOne("SocialApp.Backend.Webapi.Models.User", "User")
+                        .WithMany("Followers")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

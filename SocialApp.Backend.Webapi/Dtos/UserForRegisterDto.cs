@@ -9,7 +9,7 @@ namespace SocialApp.Backend.Webapi.Dtos
     public class UserForRegisterDto
     {
         [Required(ErrorMessage = "name gerekli bir alan.")]
-        [StringLength(50, MinimumLength = 10)]
+        [StringLength(50, MinimumLength = 3)]
         public string Name { get; set; }
         [Required]
         public string UserName { get; set; }
@@ -19,6 +19,12 @@ namespace SocialApp.Backend.Webapi.Dtos
         public string Gender { get; set; }
         [Required]
         public string Password { get; set; }
+        [Required]
+        public DateTime DateOfBirth { get; set; }
+        [Required]
+        public string Country { get; set; }
+        [Required]
+        public string City { get; set; }
 
 
 
